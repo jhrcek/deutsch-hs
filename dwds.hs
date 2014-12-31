@@ -2,6 +2,7 @@
 
 import Control.Applicative ((<$>))
 import Control.Exception.Lifted (catch, throwIO)
+import Control.Monad (when)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (catMaybes)
@@ -20,19 +21,23 @@ myConfig = defaultConfig {
 main :: IO ()
 main = runSession myConfig . finallyClose $ do
    setupBeforeSearch
-   mapM_ searchAndPrint ["Teil", "Hund", "meistern", "Magd", "Teilnahme"]
+   mapM_ searchAndPrint ["Hund", "meistern", "Nonsense"]
+
  
 searchAndPrint :: Text -> WD ()
 searchAndPrint word = do
-  search word
-  definition <- getFirstDefinition 
-  urls <- getPronUrls
-  liftIO . T.putStrLn $ concat [word,
-                                "\n definition = ", definition,
-                                "\n pron URLs = "] `append` intercalate ", " urls
+  found <- search word
+  if found 
+    then do
+      definition <- getFirstDefinition
+      urls <- getPronUrls
+      liftIO . T.putStrLn $ concat [word, "\n definition = ", definition, "\n pron URLs = "] `append` intercalate ", " urls
+    else liftIO . T.putStrLn $ concat [word, "\n not found"]
+
 
 getFirstDefinition :: WD Text
 getFirstDefinition = findElem firstDefinition >>= getText
+
 
 getPronUrls :: WD [Text]
 getPronUrls = do
@@ -40,6 +45,7 @@ getPronUrls = do
   flashvars <- catMaybes <$> (mapM (`attr` "flashvars") playerElems :: WD [Maybe Text])
   return $ map extractUrl flashvars 
   where extractUrl = last . splitOn "="
+
 
 setupBeforeSearch :: WD ()
 setupBeforeSearch = do
@@ -50,23 +56,28 @@ setupBeforeSearch = do
     click closeButt
 
 
-search :: Text -> WD ()
+waitPanelsLoaded :: WD ()
+waitPanelsLoaded = waitWhile 5 $ findElem loadingAnimation
+
+
+search :: Text -> WD Bool
 search str = do
   inp <- findElem searchInput
   clearInput inp
   sendKeys str inp
   findElem searchButton >>= click
   waitPanelsLoaded
+  null <$> findElems notFoundMessage
 
-firstDefinition, loadingAnimation, pronPlayer, searchButton, searchInput :: Selector
+
+firstDefinition, loadingAnimation, notFoundMessage, pronPlayer, searchButton, searchInput :: Selector
 firstDefinition  = ByClass "wb_bp"
 loadingAnimation = ByClass "panel_loading"
+notFoundMessage  = ByXPath "//p[contains(text(),'Kein Eintrag vorhanden')]"
 pronPlayer       = ById "oneBitInsert_1"
 searchButton     = ById "dwds_main_search_submit"
 searchInput      = ById "query_fast_search"
 
-waitPanelsLoaded :: WD ()
-waitPanelsLoaded = waitWhile 5 $ findElem loadingAnimation
 
 {- Utility functions -}
 findElemMay :: WebDriver wd => Selector -> wd (Maybe Element)
