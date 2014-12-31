@@ -2,7 +2,7 @@
 
 import Control.Applicative ((<$>))
 import Control.Exception.Lifted (catch, throwIO)
-import Control.Monad (when)
+import Control.Monad (forM, when)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (catMaybes)
@@ -21,22 +21,29 @@ myConfig = defaultConfig {
 main :: IO ()
 main = runSession myConfig . finallyClose $ do
    setupBeforeSearch
-   mapM_ searchAndPrint ["Hund", "meistern", "Nonsense"]
+   wordData <- mapM extractWordData ["Hund", "meistern", "Nonsense", "Gehweg"]
+   liftIO . mapM_ (T.putStrLn . formatWordData) $ wordData
 
+formatWordData :: WordData -> Text
+formatWordData (("word", w) : wdata) = w `append` 
+  case wdata of
+    []        -> " NOT FOUND"
+    otherwise -> concat $ map (\(field, value) -> concat ["\n  ",field, " = ", value]) wdata
  
-searchAndPrint :: Text -> WD ()
-searchAndPrint word = do
+extractWordData :: Text -> WD WordData
+extractWordData word = do
   found <- search word
-  if found 
-    then do
-      definition <- getFirstDefinition
-      urls <- getPronUrls
-      liftIO . T.putStrLn $ concat [word, "\n definition = ", definition, "\n pron URLs = "] `append` intercalate ", " urls
-    else liftIO . T.putStrLn $ concat [word, "\n not found"]
+  extract <- if found then do
+      definition <- zip (repeat "definition") <$> getDefinitions
+      urls <- zip (repeat "url") <$> getPronUrls
+      return $ definition ++ urls
+    else return []
+  return $ ("word", word) : extract
 
+type WordData = [(Text, Text)]
 
-getFirstDefinition :: WD Text
-getFirstDefinition = findElem firstDefinition >>= getText
+getDefinitions :: WD [Text]
+getDefinitions = findElems definition >>= mapM getText
 
 
 getPronUrls :: WD [Text]
@@ -70,8 +77,8 @@ search str = do
   null <$> findElems notFoundMessage
 
 
-firstDefinition, loadingAnimation, notFoundMessage, pronPlayer, searchButton, searchInput :: Selector
-firstDefinition  = ByClass "wb_bp"
+definition, loadingAnimation, notFoundMessage, pronPlayer, searchButton, searchInput :: Selector
+definition       = ByCSS "div[id^=sense]>.wb_bp"
 loadingAnimation = ByClass "panel_loading"
 notFoundMessage  = ByXPath "//p[contains(text(),'Kein Eintrag vorhanden')]"
 pronPlayer       = ById "oneBitInsert_1"
