@@ -1,21 +1,24 @@
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 import Control.Concurrent (threadDelay)
-import Control.Monad (when)
+import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
+import Data.Char (isSpace)
 import Data.Text (Text)
-import qualified Data.Text.IO as T
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import System.Environment (getArgs)
 import Test.WebDriver (WDConfig, defaultConfig, defaultCaps, wdCapabilities, browser, chrome, runSession,finallyClose, WD, findElem, openPage, click, clearInput, sendKeys, Selector(..))
+import Test.WebDriver.Commands.Wait (waitUntil)
 
 main :: IO ()
 main = do
   args <- getArgs
-  if length args /= 1 
+  if null args
     then putStrLn "Usage: runghc ivona.hs <file-with-text-to-read>"
     else do
-      text <- T.readFile $ head args
-      readChunks $ chunkText text
+      text <- TIO.readFile $ head args
+      readChunks $ chunkText 250 text
 
 readChunks :: [Text] -> IO ()
 readChunks cs = runSession myConfig . finallyClose $ do
@@ -27,10 +30,18 @@ readChunks cs = runSession myConfig . finallyClose $ do
     readChunk c = do   
       setTextToRead c
       play
-      wait 10 -- TODO: explicit wait az span pod id=voiceTesterLogicspk bude obsahovat class speakerPlay
+      waitPlayDone
 
-chunkText :: Text -> [Text]
-chunkText txt = [txt] --TODO: chunk text into pieces of 250 characters (but not in the middle of words
+waitPlayDone :: WD ()
+waitPlayDone = void . waitUntil 20 . findElem $ ByXPath "//span[@id='voiceTesterLogicpbuttext'][contains(text(),'Play')]"
+
+chunkText :: Int -> Text -> [Text]
+chunkText maxChnkSize txt | T.null txt = []
+                          | otherwise  =  chunk : chunkText maxChnkSize rest
+    where (chunk, rest) = head $ dropWhile splitsWord splitPairs
+          splitsWord (xs, ys) | T.null ys = False
+                              | otherwise = all (not . isSpace) [T.last xs, T.head ys]
+          splitPairs = map (\idx -> T.splitAt idx txt) [maxChnkSize, maxChnkSize - 1 ..]
 
 setTextToRead :: Text -> WD ()
 setTextToRead txt = do
