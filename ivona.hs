@@ -23,7 +23,7 @@ main = do
 readChunks :: [Text] -> IO ()
 readChunks cs = runSession myConfig . finallyClose $ do
   openPage "http://www.ivona.com/"
-  --selectVoice "TODO"
+  selectVoice
   mapM_ readChunk cs
   where 
     readChunk :: Text -> WD ()
@@ -46,13 +46,21 @@ play :: WD ()
 play = findElem (ById "voiceTesterLogicpbut") >>= click
 
 waitPlayDone :: WD ()
-waitPlayDone = void . waitUntil 20 . findElem $ ByXPath "//span[@id='voiceTesterLogicpbuttext'][contains(text(),'Play')]"
+waitPlayDone = void . waitUntil 30 . findElem $ ByXPath "//span[@id='voiceTesterLogicpbuttext'][contains(text(),'Play')]"
 
 setTextToRead :: Text -> WD ()
 setTextToRead txt = do
   inp <- findElem $ ById "VoiceTesterForm_text"
   clearInput inp
   sendKeys txt inp
+
+selectVoice :: WD ()
+selectVoice = do
+  findElem (ByClass "voiceSelectorValue") >>= click --open menu
+  wait 1 -- TODO explicit wait
+  findElem (ByXPath "//div/a/span/span[contains(.,'German')]") >>= click --select lang
+  wait 1
+  findElem (ByXPath "//div/a/span/span[contains(.,'Marlene')]") >>= click --select voice
 
 wait :: Int -> WD ()
 wait secs = liftIO . threadDelay $ secs * 1000000
