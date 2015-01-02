@@ -32,9 +32,7 @@ readChunks cs = runSession myConfig . finallyClose $ do
       play
       waitPlayDone
 
-waitPlayDone :: WD ()
-waitPlayDone = void . waitUntil 20 . findElem $ ByXPath "//span[@id='voiceTesterLogicpbuttext'][contains(text(),'Play')]"
-
+-- Input chunking
 chunkText :: Int -> Text -> [Text]
 chunkText maxChnkSize txt | T.null txt = []
                           | otherwise  =  chunk : chunkText maxChnkSize rest
@@ -43,14 +41,18 @@ chunkText maxChnkSize txt | T.null txt = []
                               | otherwise = all (not . isSpace) [T.last xs, T.head ys]
           splitPairs = map (\idx -> T.splitAt idx txt) [maxChnkSize, maxChnkSize - 1 ..]
 
+-- Ivona UI controls
+play :: WD ()
+play = findElem (ById "voiceTesterLogicpbut") >>= click
+
+waitPlayDone :: WD ()
+waitPlayDone = void . waitUntil 20 . findElem $ ByXPath "//span[@id='voiceTesterLogicpbuttext'][contains(text(),'Play')]"
+
 setTextToRead :: Text -> WD ()
 setTextToRead txt = do
   inp <- findElem $ ById "VoiceTesterForm_text"
   clearInput inp
   sendKeys txt inp
-
-play :: WD ()
-play = findElem (ById "voiceTesterLogicpbut") >>= click
 
 wait :: Int -> WD ()
 wait secs = liftIO . threadDelay $ secs * 1000000
