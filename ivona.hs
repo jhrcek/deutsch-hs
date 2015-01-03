@@ -58,9 +58,10 @@ selectVoice :: WD ()
 selectVoice = do
   findElem (ByClass "voiceSelectorValue") >>= click --open menu
   wait 1 -- TODO explicit wait
-  findElem (ByXPath "//div/a/span/span[contains(.,'German')]") >>= click --select lang
+  clickItem "German" --select lang
   wait 1
-  findElem (ByXPath "//div/a/span/span[contains(.,'Marlene')]") >>= click --select voice
+  clickItem "Marlene" --select voice
+  where clickItem str = findElem (ByXPath $ T.concat ["//div/a/span/span[contains(.,'", str, "')]"]) >>= click
 
 wait :: Int -> WD ()
 wait secs = liftIO . threadDelay $ secs * 1000000
