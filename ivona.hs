@@ -34,12 +34,13 @@ readChunks cs = runSession myConfig . finallyClose $ do
 
 -- Input chunking
 chunkText :: Int -> Text -> [Text]
-chunkText maxChnkSize txt | T.null txt = []
-                          | otherwise  =  chunk : chunkText maxChnkSize rest
-    where (chunk, rest) = head $ dropWhile splitsWord splitPairs
-          splitsWord (xs, ys) | T.null ys = False
-                              | otherwise = all (not . isSpace) [T.last xs, T.head ys]
-          splitPairs = map (\idx -> T.splitAt idx txt) [maxChnkSize, maxChnkSize - 1 ..]
+chunkText maxChnkSize txt = reverse $ foldl chunk [] (T.words txt)
+  where 
+    chunk []     word = [word]
+    chunk (c:cs) word = if 1 + T.length word + T.length c <= maxChnkSize
+                          then (c `T.snoc` ' ' `T.append` word) : cs --append word to existing chunk
+                          else word : c : cs --make word seed of new chunk
+
 
 -- Ivona UI controls
 play :: WD ()
