@@ -1,22 +1,13 @@
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 import Control.Applicative ((<$>))
-import Control.Exception.Lifted (catch, throwIO)
-import Control.Monad (forM, when)
-import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (catMaybes)
-import Data.Text (Text, concat, splitOn, append, intercalate, pack)
+import Data.Text (Text, concat, splitOn, append, pack)
 import qualified Data.Text.IO as T
 import Prelude hiding (concat)
-import Test.WebDriver (WDConfig, defaultConfig, defaultCaps, wdCapabilities, browser, chrome, runSession,finallyClose, WD, findElem, findElems, getText, Element, attr, openPage, click, clearInput, sendKeys, Selector(..), FailedCommandType(..), FailedCommand(..))
-import Test.WebDriver.Class (WebDriver)
+import Test.WebDriver (WDConfig, defaultConfig, defaultCaps, wdCapabilities, browser, chrome, runSession,finallyClose, WD, findElem, findElems, getText, Element, attr, openPage, click, clearInput, sendKeys, Selector(..))
 import Test.WebDriver.Commands.Wait (waitWhile)
-
-myConfig :: WDConfig
-myConfig = defaultConfig {
-    wdCapabilities = defaultCaps {browser = chrome}
-  }
 
 main :: IO ()
 main = runSession myConfig . finallyClose $ do
@@ -87,15 +78,7 @@ pronPlayer       = ById "oneBitInsert_1"
 searchButton     = ById "dwds_main_search_submit"
 searchInput      = ById "query_fast_search"
 
-
-{- Utility functions -}
-findElemMay :: WebDriver wd => Selector -> wd (Maybe Element)
-findElemMay sel = fmap Just (findElem sel) `onNoSuchElement` return Nothing
-
--- Convenience function to catch FailedCommand NoSuchElement exceptions and perform some action.
--- Inspired by Test.WebDriver.Commands.Wait.onTimeout
-onNoSuchElement :: MonadBaseControl IO m => m a -> m a -> m a
-onNoSuchElement m r = m `catch` handler
-  where
-    handler (FailedCommand NoSuchElement _) = r
-    handler other = throwIO other
+myConfig :: WDConfig
+myConfig = defaultConfig {
+    wdCapabilities = defaultCaps {browser = chrome}
+  }
