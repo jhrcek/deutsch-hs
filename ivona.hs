@@ -7,8 +7,10 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Environment (getArgs)
-import Test.WebDriver (WDConfig, defaultConfig, defaultCaps, wdCapabilities, browser, chrome, runSession,finallyClose, WD, findElem, openPage, click, clearInput, sendKeys, Selector(..))
+import Test.WebDriver (runSession,finallyClose, WD, findElem, openPage, Selector(..))
 import Test.WebDriver.Commands.Wait (waitUntil)
+
+import WdUtil (clickElem, setInput, myWdConfig)
 
 main :: IO ()
 main = do
@@ -20,7 +22,7 @@ main = do
       readChunks $ chunkText 250 text
 
 readChunks :: [Text] -> IO ()
-readChunks cs = runSession myConfig . finallyClose $ do
+readChunks cs = runSession myWdConfig . finallyClose $ do
   openPage "http://www.ivona.com/"
   selectVoice
   mapM_ readChunk cs
@@ -43,30 +45,22 @@ chunkText maxChnkSize txt = reverse $ foldl chunk [] (T.words txt)
 
 -- Ivona UI controls
 play :: WD ()
-play = findElem (ById "voiceTesterLogicpbut") >>= click
+play = clickElem $ ById "voiceTesterLogicpbut"
 
 waitPlayDone :: WD ()
 waitPlayDone = void . waitUntil 30 . findElem $ ByXPath "//span[@id='voiceTesterLogicpbuttext'][contains(text(),'Play')]"
 
 setTextToRead :: Text -> WD ()
-setTextToRead txt = do
-  inp <- findElem $ ById "VoiceTesterForm_text"
-  clearInput inp
-  sendKeys txt inp
+setTextToRead txt = setInput (ById "VoiceTesterForm_text") txt
 
 selectVoice :: WD ()
 selectVoice = do
-  findElem (ByClass "voiceSelectorValue") >>= click --open menu
+  clickElem (ByClass "voiceSelectorValue") --open menu
   wait 1 -- TODO explicit wait
   clickItem "German" --select lang
   wait 1
   clickItem "Marlene" --select voice
-  where clickItem str = findElem (ByXPath $ T.concat ["//div/a/span/span[contains(.,'", str, "')]"]) >>= click
+  where clickItem str = clickElem (ByXPath $ T.concat ["//div/a/span/span[contains(.,'", str, "')]"])
 
 wait :: Int -> WD ()
 wait secs = liftIO . threadDelay $ secs * 1000000
-
-myConfig :: WDConfig
-myConfig = defaultConfig {
-    wdCapabilities = defaultCaps {browser = chrome}
-  }

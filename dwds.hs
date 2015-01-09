@@ -6,11 +6,13 @@ import Data.Maybe (catMaybes)
 import Data.Text (Text, concat, splitOn, append, pack)
 import qualified Data.Text.IO as T
 import Prelude hiding (concat)
-import Test.WebDriver (WDConfig, defaultConfig, defaultCaps, wdCapabilities, browser, chrome, runSession,finallyClose, WD, findElem, findElems, getText, Element, attr, openPage, click, clearInput, sendKeys, Selector(..))
+import Test.WebDriver (runSession,finallyClose, WD, findElem, findElems, getText, Element, attr, openPage, click, Selector(..))
 import Test.WebDriver.Commands.Wait (waitWhile)
 
+import WdUtil (clickElem, setInput, myWdConfig)
+
 main :: IO ()
-main = runSession myConfig . finallyClose $ do
+main = runSession myWdConfig . finallyClose $ do
    setupBeforeSearch
    wordData <- mapM extractWordData ["Hund", "meistern", "Nonsense", "Gehweg"]
    liftIO . mapM_ (T.putStrLn . formatWordData) $ wordData
@@ -63,12 +65,9 @@ waitPanelsLoaded = waitWhile 5 $ findElem loadingAnimation
 
 search :: Text -> WD ()
 search str = do
-  inp <- findElem searchInput
-  clearInput inp
-  sendKeys str inp
-  findElem searchButton >>= click
+  setInput searchInput str 
+  clickElem searchButton
   waitPanelsLoaded
-
 
 definition, loadingAnimation, {-notFoundMessage,-} pronPlayer, searchButton, searchInput :: Selector
 definition       = ByCSS "div[id^=sense]>.wb_bp"
@@ -77,8 +76,3 @@ loadingAnimation = ByClass "panel_loading"
 pronPlayer       = ById "oneBitInsert_1"
 searchButton     = ById "dwds_main_search_submit"
 searchInput      = ById "query_fast_search"
-
-myConfig :: WDConfig
-myConfig = defaultConfig {
-    wdCapabilities = defaultCaps {browser = chrome}
-  }
