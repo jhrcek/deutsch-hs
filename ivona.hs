@@ -10,7 +10,7 @@ import System.Environment (getArgs)
 import Test.WebDriver (runSession,finallyClose, WD, findElem, openPage, Selector(..))
 import Test.WebDriver.Commands.Wait (waitUntil)
 
-import WdUtil (clickElem, setInput, myWdConfig)
+import WdUtil (clickElem, setInput, myWdConfig, withServer)
 
 main :: IO ()
 main = do
@@ -22,7 +22,7 @@ main = do
       readChunks $ chunkText 250 text
 
 readChunks :: [Text] -> IO ()
-readChunks cs = runSession myWdConfig . finallyClose $ do
+readChunks cs = withServer $ runSession myWdConfig . finallyClose $ do
   openPage "http://www.ivona.com/"
   selectVoice
   mapM_ readChunk cs
